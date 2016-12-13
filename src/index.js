@@ -57,6 +57,29 @@ function keyboard(keyCode) {
   return key;
 }
 
+function contain(sprite, container) {
+  let collision = new Set();
+
+  if (sprite.x < container.x) {
+    sprite.x = container.x;
+    collision.add('left')
+  }
+  if (sprite.y < container.y) {
+    sprite.y = container.y;
+    collision.add('top')
+  }
+  if (sprite.x + sprite.width > container.width) {
+    sprite.x = container.width - sprite.width;
+    collision.add('right');
+  }
+  if (sprite.y + sprite.height > container.height) {
+    sprite.y = container.height - sprite.height;
+    collision.add('bottom');
+  }
+  if (collision.size === 0) collision = undefined;
+
+  return collision;
+}
 
 //load an image and run the `setup` function when it's done
 loader
@@ -76,6 +99,12 @@ function setup() {
   pixie.y = 0;
   pixie.vx = 0;
   pixie.vy = 0;
+  pixie.accelerationX = 0;
+  pixie.accelerationY = 0;
+  pixie.frictionX = 1;
+  pixie.frictionY = 1;
+  pixie.speed = 0.2;
+  pixie.drag = 0.98;
 
   //Add the sprite to the stage
   stage.addChild(pixie);
@@ -86,63 +115,93 @@ function setup() {
   let down = keyboard(40);
 
   left.press = () => {
-    pixie.vx = -5;
-    pixie.vy = 0;
+    pixie.accelerationX = -pixie.speed;
+    pixie.frictionX = 1;
   };
 
   left.release = () => {
-    if (!right.isDown && pixie.vy === 0) {
-      pixie.vx = 0;
+    if (!right.isDown) {
+      pixie.accelerationX = 0;
+      pixie.frictionX = pixie.drag;
     }
   };
 
   up.press = () => {
-    pixie.vy = -5;
-    pixie.vx = 0;
+    pixie.accelerationY = -pixie.speed;
+    pixie.frictionY = 1;
   };
 
   up.release = () => {
-    if (!down.isDown && pixie.vx === 0) {
-      pixie.vy = 0;
+    if (!down.isDown) {
+      pixie.accelerationY = 0;
+      pixie.frictionY = pixie.drag;
     }
   };
 
   right.press = () => {
-    pixie.vx = 5;
-    pixie.vy = 0;
+    pixie.accelerationX = pixie.speed;
+    pixie.frictionX = 1;
   };
 
   right.release = () => {
-    if (!up.isDown && pixie.vy === 0) {
-      pixie.vx = 0;
+    if (!up.isDown) {
+      pixie.accelerationX = 0;
+      pixie.frictionX = pixie.drag;
     }
   };
 
   down.press = () => {
-    pixie.vy = 5;
-    pixie.vx = 0;
+    pixie.accelerationY = pixie.speed;
+    pixie.frictionY = 1;
   };
 
   down.release = () => {
-    if (!up.isDown && pixie.vx === 0) {
-      pixie.vy = 0;
+    if (!up.isDown) {
+      pixie.accelerationY = 0;
+      pixie.frictionY = pixie.drag;
     }
   };
 
-  //Start the game loop
+  // Start the game loop
   gameLoop();
 }
 
-function gameLoop(){
-
-  //Loop this function 60 times per second
-  requestAnimationFrame(gameLoop);
+function gameLoop () {
+  // Loop this function 60 times per second
+  window.requestAnimationFrame(gameLoop);
   state();
-  //Render the stage
+  // Render the stage
   renderer.render(stage);
 }
 
-function play() {
+function play () {
+  pixie.vx += pixie.accelerationX;
+  pixie.vy += pixie.accelerationY;
+
+  pixie.vx *= pixie.frictionX;
+  pixie.vy *= pixie.frictionY;
+
+  pixie.vy += 0.1;
+
   pixie.x += pixie.vx;
   pixie.y += pixie.vy;
+
+  let collision = contain(
+    pixie,
+    {
+      x: 0,
+      y: 0,
+      width: renderer.view.width,
+      height: renderer.view.height
+    }
+  );
+
+  if (collision) {
+    if (collision.has('left') || collision.has('right')) {
+      pixie.vx = -pixie.vx;
+    }
+    if (collision.has('top') || collision.has('bottom')) {
+      pixie.vy = -pixie.vy;
+    }
+  }
 }
